@@ -1,0 +1,14 @@
+{
+  "title": "Observation",
+  "type": "object",
+  "required": ["observationId", "actionId", "capability", "timestamp", "contentIsData"],
+  "properties": {
+    "observationId": { "type": "string" },
+    "actionId": { "type": "string" },
+    "capability": { "type": "string" },
+    "target": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "payload": { "type": "object" },
+    "contentIsData": { "type": "boolean", "const": true }
+  }
+}

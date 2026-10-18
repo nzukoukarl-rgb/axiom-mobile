@@ -1,0 +1,11 @@
+{
+  "title": "SyncBatch",
+  "type": "object",
+  "properties": {
+    "deviceId": { "type": "string" },
+    "runnerId": { "type": "string" },
+    "evidence": { "type": "array" },
+    "tasks": { "type": "array" },
+    "since": { "type": "string" }
+  }
+}

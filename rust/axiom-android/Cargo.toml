@@ -1,0 +1,13 @@
+[package]
+name = "axiom-android"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+axiom-mobile-core = { path = "../axiom-mobile-core" }
+axiom-runner = { path = "../axiom-runner" }
+serde = { workspace = true }
+serde_json = { workspace = true }

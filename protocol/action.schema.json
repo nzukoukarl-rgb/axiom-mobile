@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActionEnvelope",
+  "type": "object",
+  "required": ["actionId", "capability", "workspaceId", "expectedRunnerId", "approval"],
+  "properties": {
+    "actionId": { "type": "string" },
+    "capability": {
+      "type": "string",
+      "enum": [
+        "repo.status", "repo.read", "repo.grep", "repo.list",
+        "repo.worktree.create", "repo.edit", "repo.diff", "repo.verify"
+      ]
+    },
+    "workspaceId": { "type": "string" },
+    "path": { "type": "string" },
+    "query": { "type": "string" },
+    "content": { "type": "string" },
+    "approval": { "type": "string", "enum": ["none", "pending", "approved", "refused"] },
+    "expectedRunnerId": { "type": "string" },
+    "expiresAt": { "type": "string" }
+  },
+  "additionalProperties": false
+}

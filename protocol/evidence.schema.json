@@ -1,0 +1,16 @@
+{
+  "title": "Evidence",
+  "type": "object",
+  "required": ["id", "actionId", "observationId", "hash", "runnerId"],
+  "properties": {
+    "id": { "type": "string" },
+    "actionId": { "type": "string" },
+    "observationId": { "type": "string" },
+    "timestamp": { "type": "string" },
+    "target": { "type": "string" },
+    "resultSummary": { "type": "string" },
+    "hash": { "type": "string" },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "runnerId": { "type": "string" }
+  }
+}
