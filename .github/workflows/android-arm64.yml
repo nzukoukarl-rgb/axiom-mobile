@@ -1,0 +1,53 @@
+name: build-karl-apk
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK
+        run: |
+          sdkmanager --install "ndk;26.1.10909125"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked --version 3.5.4
+      - name: Build native arm64
+        run: |
+          cargo ndk -t arm64-v8a -o android/app/src/main/jniLibs -p axiom-android build --release
+          find android/app/src/main/jniLibs -type f -ls || true
+      - name: Gradle wrapper
+        working-directory: android
+        run: |
+          if [ ! -f gradlew ]; then
+            curl -sL https://services.gradle.org/distributions/gradle-8.5-bin.zip -o /tmp/g.zip
+            unzip -q /tmp/g.zip -d /tmp
+            /tmp/gradle-8.5/bin/gradle wrapper --gradle-version 8.5
+          fi
+          chmod +x gradlew
+      - name: Assemble APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon || ./gradlew assembleDebug --no-daemon
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: axiom-karl-apk
+          path: |
+            android/app/build/outputs/apk/**/*.apk
+            android/app/src/main/jniLibs/**/*.so
+          if-no-files-found: warn
+          retention-days: 14
