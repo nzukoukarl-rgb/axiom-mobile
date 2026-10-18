@@ -1,19 +1,35 @@
 package com.axiom.mobile;
 
-// Skeleton: real UI in Kotlin/Compose lands with Android Studio packaging.
-// Native methods will bind to libaxiom_android.so (cargo-ndk).
+import android.app.Activity;
+import android.os.Bundle;
+import android.widget.TextView;
 
-public class MainActivity {
+public class MainActivity extends Activity {
     static {
         try {
             System.loadLibrary("axiom_android");
         } catch (UnsatisfiedLinkError e) {
-            // Host unit tests / missing .so
+            // .so absent en test host
         }
     }
 
-    // Native API (implemented in Rust bridge once JNI wired)
     public static native String nativeIdentity();
     public static native String nativeInitWorkspace(String path);
     public static native String nativeExecute(String actionJson);
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        TextView tv = new TextView(this);
+        String text = "Axiom Mobile";
+        try {
+            text = nativeIdentity();
+        } catch (Throwable t) {
+            text = "Axiom (native pending)\n" + t.getMessage();
+        }
+        tv.setText(text);
+        tv.setTextSize(18f);
+        tv.setPadding(48, 48, 48, 48);
+        setContentView(tv);
+    }
 }
