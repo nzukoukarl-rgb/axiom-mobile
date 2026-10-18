@@ -44,7 +44,7 @@ jobs:
 
       - name: Build native arm64-v8a
         run: |
-          cargo ndk -t arm64-v8a -o android/app/src/main/jniLibs -p axiom-android build --release
+          cargo ndk -t arm64-v8a -o android/app/src/main/jniLibs -- build -p axiom-android --release
           find android/app/src/main/jniLibs -type f -ls || true
 
       - name: Gradle wrapper
