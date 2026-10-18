@@ -2,11 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.axiom.mobile">
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- SAF does not need broad storage permission on modern Android -->
     <application
         android:label="Axiom"
         android:allowBackup="false"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:extractNativeLibs="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -6,12 +6,17 @@ android {
     applicationId "com.axiom.mobile"
     minSdk 26
     targetSdk 34
-    versionCode 1
-    versionName "0.1.0-karl"
+    versionCode 2
+    versionName "0.1.1-karl"
     ndk { abiFilters 'arm64-v8a' }
   }
   buildTypes {
     release { minifyEnabled false; signingConfig signingConfigs.debug }
+  }
+  packaging {
+    jniLibs {
+      useLegacyPackaging = true
+    }
   }
   lint {
     abortOnError false
