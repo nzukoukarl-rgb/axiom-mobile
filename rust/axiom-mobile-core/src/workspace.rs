@@ -67,7 +67,7 @@ impl Workspace {
         if path.contains('\0') {
             return Err("NULL_BYTE".into());
         }
-        if path.starts_with('/') || path.starts_with('\~') {
+        if path.starts_with('/') || path.starts_with('~') {
             return Err("ABSOLUTE_PATH_DENIED".into());
         }
         for part in path.replace('\\', "/").split('/') {
