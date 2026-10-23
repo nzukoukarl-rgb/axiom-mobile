@@ -57,7 +57,12 @@ public class MainActivity extends Activity {
             JSONObject ws = WorkspaceStore.buildSafWorkspace(name, tree, true);
             WorkspaceStore.save(this, ws);
             if (webView != null) {
-                webView.post(() -> webView.evaluateJavascript("try{refresh()}catch(e){}", null));
+                webView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        webView.evaluateJavascript("try{refresh()}catch(e){}", null);
+                    }
+                });
             }
         } catch (Exception ignored) {}
     }
