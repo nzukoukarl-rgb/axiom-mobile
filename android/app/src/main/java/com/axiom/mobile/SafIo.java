@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.security.MessageDigest;
 
@@ -15,20 +16,33 @@ public final class SafIo {
     private SafIo() {}
 
     private static DocumentFile resolve(DocumentFile root, String relative) throws SecurityException {
-        if (relative == null) relative = "";
-        String p = relative.replace("\\", "/").trim();
-        while (p.startsWith("./")) p = p.substring(2);
-        if (p.startsWith("/") || p.startsWith("\~") || p.equals("..") || p.startsWith("../")
-                || p.contains("/../") || p.contains("/..")) {
+        if (relative == null) {
+            relative = "";
+        }
+        String p = relative.replace('\\', '/').trim();
+        while (p.startsWith("./")) {
+            p = p.substring(2);
+        }
+        if (p.startsWith("/") || p.startsWith("\~")) {
             throw new SecurityException("PATH_TRAVERSAL_DENIED");
         }
-        if (p.isEmpty() || p.equals(".")) return root;
+        if (p.isEmpty() || ".".equals(p)) {
+            return root;
+        }
         DocumentFile cur = root;
-        for (String part : p.split("/")) {
-            if (part.isEmpty() || part.equals(".")) continue;
-            if (part.equals("..")) throw new SecurityException("PATH_TRAVERSAL_DENIED");
+        String[] parts = p.split("/");
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if ("..".equals(part)) {
+                throw new SecurityException("PATH_TRAVERSAL_DENIED");
+            }
             DocumentFile next = cur.findFile(part);
-            if (next == null) return null;
+            if (next == null) {
+                return null;
+            }
             cur = next;
         }
         return cur;
@@ -109,8 +123,13 @@ public final class SafIo {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] dig = md.digest(data);
             StringBuilder hex = new StringBuilder();
-            for (byte b : dig) hex.append(String.format("%02x", b));
-            String preview = new String(data, 0, Math.min(data.length, 200), java.nio.charset.StandardCharsets.UTF_8);
+            for (byte b : dig) {
+                hex.append(String.format("%02x", b));
+            }
+            String preview = new String(
+                    data, 0, Math.min(data.length, 200),
+                    java.nio.charset.StandardCharsets.UTF_8
+            );
 
             JSONObject payload = new JSONObject();
             payload.put("path", relative);
@@ -139,11 +158,14 @@ public final class SafIo {
 
     private static byte[] readAll(InputStream in, int max) throws Exception {
         byte[] buf = new byte[8192];
-        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-        int n, total = 0;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int n;
+        int total = 0;
         while ((n = in.read(buf)) >= 0) {
             total += n;
-            if (total > max) break;
+            if (total > max) {
+                break;
+            }
             out.write(buf, 0, n);
         }
         return out.toByteArray();
