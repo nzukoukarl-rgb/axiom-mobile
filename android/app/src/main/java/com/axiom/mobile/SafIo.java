@@ -23,7 +23,7 @@ public final class SafIo {
         while (p.startsWith("./")) {
             p = p.substring(2);
         }
-        if (p.startsWith("/") || p.startsWith("\~")) {
+        if (p.startsWith("/") || p.startsWith("~")) {
             throw new SecurityException("PATH_TRAVERSAL_DENIED");
         }
         if (p.isEmpty() || ".".equals(p)) {
