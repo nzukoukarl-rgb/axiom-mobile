@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"/>
+<title>Axiom</title>
+<style>
+:root {
+  --bg0: #050510; --glass: rgba(18,22,40,0.78); --border: rgba(255,255,255,0.08);
+  --cyan: #5EEAD4; --cyan2: #22D3EE; --mauve: #A78BFA; --mauve2: #7C3AED; --indigo: #6366F1;
+  --text: #E8EDF7; --muted: #94A3B8; --ok: #34D399; --danger: #F87171;
+  --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; height: 100%; color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  background: radial-gradient(1200px 600px at 80% -10%, rgba(124,58,237,0.22), transparent 55%),
+              radial-gradient(900px 500px at -10% 30%, rgba(34,211,238,0.12), transparent 50%), #050510;
+  overflow: hidden;
+}
+.app { display: flex; flex-direction: column; height: 100%; padding-top: var(--safe-t); }
+.header {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  background: var(--glass); border-bottom: 1px solid var(--border);
+}
+.logo {
+  width: 32px; height: 32px; border-radius: 10px; font-weight: 800; font-size: 14px; color: #fff;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--cyan2), var(--mauve2));
+}
+.brand { font-weight: 700; }
+.badges { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.chip {
+  font-size: 11px; padding: 5px 10px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14); color: var(--muted); background: rgba(255,255,255,0.04);
+}
+.chip.cyan { color: var(--cyan); border-color: rgba(94,234,212,0.35); }
+.main { flex: 1; overflow: hidden; position: relative; }
+.panel { display: none; height: 100%; overflow-y: auto; padding: 14px 14px 100px; }
+.panel.active { display: block; }
+.row { display: flex; margin: 12px 0; }
+.row.user { justify-content: flex-end; }
+.bubble {
+  max-width: 92%; padding: 12px 14px; border-radius: 18px; border: 1px solid var(--border);
+  background: var(--glass); font-size: 14px; line-height: 1.45;
+}
+.row.user .bubble {
+  background: linear-gradient(160deg, rgba(94,234,212,0.12), rgba(124,58,237,0.18));
+  border-bottom-right-radius: 6px;
+}
+.meta { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: right; }
+.agent-mark {
+  width: 28px; height: 28px; border-radius: 50%; margin-right: 8px; flex-shrink: 0;
+  display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  background: linear-gradient(135deg, var(--mauve2), var(--indigo));
+}
+.card {
+  margin: 12px 0; padding: 14px; border-radius: 16px; border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+}
+.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.card-title { font-weight: 600; font-size: 13px; }
+.tag { margin-left: auto; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
+.tag.verified { background: rgba(52,211,153,0.15); color: var(--ok); }
+.tag.path { background: rgba(94,234,212,0.12); color: var(--cyan); }
+.tag.conf { background: rgba(167,139,250,0.18); color: var(--mauve); }
+.card p, .sub { font-size: 12px; color: var(--muted); margin: 4px 0; }
+.term {
+  background: #07090f; border: 1px solid var(--border); border-radius: 14px;
+  padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #CBD5E1;
+}
+.term .cmd { color: var(--cyan); }
+.term .ok { color: var(--ok); }
+.mutation {
+  border-color: rgba(124,58,237,0.45);
+  background: linear-gradient(160deg, rgba(124,58,237,0.16), rgba(18,20,36,0.9));
+}
+.actions { display: flex; gap: 10px; margin-top: 12px; }
+.btn { flex: 1; border: none; border-radius: 12px; padding: 12px; font-weight: 700; font-size: 14px; }
+.btn.approve { background: linear-gradient(135deg, var(--mauve2), var(--indigo)); color: #fff; }
+.btn.reject { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.14); }
+.btn:disabled { opacity: 0.45; }
+.composer-wrap {
+  position: absolute; left: 0; right: 0; bottom: 56px; padding: 8px 12px;
+  background: linear-gradient(transparent, #050510 30%); pointer-events: none;
+}
+.composer {
+  pointer-events: auto; display: flex; gap: 8px; align-items: center;
+  background: var(--glass); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 999px; padding: 6px 6px 6px 16px;
+}
+.composer input { flex: 1; border: none; background: transparent; color: var(--text); font-size: 14px; outline: none; }
+.send {
+  width: 40px; height: 40px; border-radius: 50%; border: none; color: #fff; font-size: 16px;
+  background: linear-gradient(135deg, var(--cyan2), var(--mauve2));
+}
+.nav {
+  display: flex; border-top: 1px solid var(--border); background: rgba(5,5,16,0.92);
+  padding-bottom: var(--safe-b);
+}
+.nav button { flex: 1; background: none; border: none; color: var(--muted); padding: 10px 4px; font-size: 10px; }
+.nav button.active { color: var(--cyan); }
+.nav .ico { display: block; font-size: 18px; }
+.toast {
+  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+  background: #0f172a; border: 1px solid rgba(255,255,255,0.14);
+  padding: 10px 16px; border-radius: 12px; font-size: 13px; opacity: 0; transition: opacity .25s; z-index: 50;
+}
+.toast.show { opacity: 1; }
+.lock { font-size: 11px; color: var(--mauve); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="logo">A</div>
+    <div class="brand">Axiom</div>
+    <div class="badges">
+      <span class="chip cyan" id="runnerChip">runner-karl-phone · PATH_ONLY</span>
+      <span class="chip" id="wsChip">—</span>
+    </div>
+  </header>
+  <div class="main">
+    <section class="panel active" id="panel-chat">
+      <div class="card">
+        <div class="card-head"><span class="card-title">$ repo list</span><span class="tag path">PATH ONLY</span></div>
+        <div class="term" id="repoList">
+          <div><span class="cmd">$</span> repo list</div>
+          <div>checkout/flow.ts <span class="ok">✓ included</span></div>
+          <div>checkout/flow.test.ts <span class="ok">✓ included</span></div>
+        </div>
+      </div>
+      <div class="row user"><div class="bubble">Add a guard so checkout rejects gift cards when cart total exceeds remaining balance.<div class="meta">now</div></div></div>
+      <div class="row agent">
+        <div class="agent-mark">A</div>
+        <div class="bubble">Understood. Balance check before gift card; clear error if insufficient. Evidence + proposed change below.<div class="meta">now</div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Evidence E-demo01</span><span class="tag verified">VERIFIED</span></div>
+        <p>Read checkout/flow.ts (demo card until live probe).</p>
+      </div>
+      <div class="card mutation" id="mutationCard">
+        <div class="card-head"><span class="card-title">Proposed mutation</span><span class="tag conf">confidence 96%</span></div>
+        <p>Add balance guard + tests</p>
+        <div class="sub">2 files · <b style="color:var(--ok)">+38</b> <b style="color:var(--danger)">-4</b></div>
+        <div class="lock">Approval required · M2 · canonical intact until Approve</div>
+        <div class="actions">
+          <button class="btn reject" id="btnReject">Reject</button>
+          <button class="btn approve" id="btnApprove">Approve</button>
+        </div>
+      </div>
+    </section>
+    <section class="panel" id="panel-code">
+      <div class="card">
+        <div class="card-head"><span class="card-title">T7-P Policy</span><span class="tag path">M2</span></div>
+        <div class="term" id="t7pOut">open Settings → Run T7-P</div>
+      </div>
+    </section>
+    <section class="panel" id="panel-evidence">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Evidence / probe</span></div>
+        <div class="term" id="evList">Settings → Lire workspace</div>
+      </div>
+    </section>
+    <section class="panel" id="panel-settings">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Runner</span></div>
+        <div class="term" id="settingsId">…</div>
+      </div>
+      <div class="card">
+        <button class="btn approve" id="btnPick" style="width:100%">Choisir dossier (SAF)</button>
+        <button class="btn reject" id="btnProbe" style="width:100%;margin-top:8px">Lire workspace</button>
+        <button class="btn reject" id="btnT7p" style="width:100%;margin-top:8px">Run T7-P</button>
+      </div>
+      <div class="card"><p class="sub">M1.5 CLOSED · T7 PLATFORM_LIMITED · T7-P · M2 shell</p></div>
+    </section>
+    <div class="composer-wrap" id="composerWrap">
+      <div class="composer">
+        <input id="ask" placeholder="Ask Axiom…" autocomplete="off"/>
+        <button class="send" id="btnSend">↑</button>
+      </div>
+    </div>
+  </div>
+  <nav class="nav">
+    <button class="active" data-tab="chat"><span class="ico">💬</span>Chat</button>
+    <button data-tab="code"><span class="ico">&lt;/&gt;</span>Code</button>
+    <button data-tab="evidence"><span class="ico">🛡</span>Evidence</button>
+    <button data-tab="settings"><span class="ico">⚙</span>Settings</button>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const bridge = window.AxiomBridge || null;
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
+function tab(n){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===n));
+  document.getElementById('panel-'+n).classList.add('active');
+  document.getElementById('composerWrap').style.display=n==='chat'?'block':'none';
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
+function safeCall(fn, fb){try{if(bridge&&bridge[fn])return bridge[fn]()}catch(e){return fb||('err:'+e)}return fb}
+function refresh(){
+  let id=safeCall('getNativeIdentity',null)||safeCall('nativeIdentity','{"runner_id":"runner-karl-phone","isolation_level":"PATH_ONLY"}');
+  document.getElementById('settingsId').textContent=id;
+  try{const j=JSON.parse(id);const o=j.identity||j;document.getElementById('runnerChip').textContent=(o.runner_id||'runner-karl-phone')+' · '+(o.isolation_level||'PATH_ONLY')}catch(e){}
+  const ws=safeCall('getActiveWorkspace','null');
+  if(ws&&ws!=='null'){try{document.getElementById('wsChip').textContent='📁 '+JSON.parse(ws).displayName}catch(e){document.getElementById('wsChip').textContent='workspace'}}
+  else document.getElementById('wsChip').textContent='Aucun WS';
+}
+document.getElementById('btnPick').onclick=()=>{if(bridge&&bridge.pickWorkspace)bridge.pickWorkspace();else toast('No bridge')};
+document.getElementById('btnProbe').onclick=()=>{const r=safeCall('probeWorkspace','{"error":"NO_BRIDGE"}');document.getElementById('evList').textContent=r;toast('Probe done');refresh()};
+document.getElementById('btnT7p').onclick=()=>{const r=safeCall('runT7P','{"t7p":"local"}');document.getElementById('t7pOut').textContent=r;toast('T7-P')};
+document.getElementById('btnApprove').onclick=()=>{toast('M2: Approve recorded — edit locked until worktree');document.getElementById('btnApprove').disabled=true};
+document.getElementById('btnReject').onclick=()=>{document.getElementById('mutationCard').style.opacity='0.5';toast('Rejected — canonical intact')};
+document.getElementById('btnSend').onclick=()=>{if(!document.getElementById('ask').value.trim())return;toast('Message captured');document.getElementById('ask').value=''};
+refresh();
+</script>
+</body>
+</html>

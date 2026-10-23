@@ -2,114 +2,150 @@ package com.axiom.mobile;
 
 import android.content.Context;
 import android.net.Uri;
+
 import androidx.documentfile.provider.DocumentFile;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
+
 import java.io.InputStream;
 import java.security.MessageDigest;
 
-/** ANDROID_SAF I/O via DocumentFile. Relative paths only. */
 public final class SafIo {
     private SafIo() {}
 
-    public static JSONObject list(Context ctx, Uri tree, String relative) throws Exception {
-        DocumentFile root = DocumentFile.fromTreeUri(ctx, tree);
-        if (root == null || !root.exists()) {
-            return err("WORKSPACE_ACCESS_REVOKED");
+    private static DocumentFile resolve(DocumentFile root, String relative) throws SecurityException {
+        if (relative == null) relative = "";
+        String p = relative.replace("\\", "/").trim();
+        while (p.startsWith("./")) p = p.substring(2);
+        if (p.startsWith("/") || p.startsWith("\~") || p.equals("..") || p.startsWith("../")
+                || p.contains("/../") || p.contains("/..")) {
+            throw new SecurityException("PATH_TRAVERSAL_DENIED");
         }
-        DocumentFile dir = resolve(root, relative);
-        if (dir == null || !dir.isDirectory()) {
-            return err("NOT_FOUND");
-        }
-        JSONArray entries = new JSONArray();
-        DocumentFile[] kids = dir.listFiles();
-        if (kids != null) {
-            for (DocumentFile f : kids) {
-                JSONObject e = new JSONObject();
-                e.put("name", f.getName());
-                e.put("isDir", f.isDirectory());
-                e.put("length", f.length());
-                entries.put(e);
-            }
-        }
-        JSONObject ok = new JSONObject();
-        ok.put("ok", true);
-        ok.put("denied", false);
-        ok.put("entries", entries);
-        ok.put("count", entries.length());
-        return ok;
-    }
-
-    public static JSONObject read(Context ctx, Uri tree, String relative) throws Exception {
-        if (relative == null || relative.isEmpty()) return err("EMPTY_PATH");
-        if (relative.contains("..") || relative.startsWith("/")) {
-            return err("PATH_TRAVERSAL_DENIED");
-        }
-        DocumentFile root = DocumentFile.fromTreeUri(ctx, tree);
-        if (root == null || !root.exists()) {
-            return err("WORKSPACE_ACCESS_REVOKED");
-        }
-        DocumentFile file = resolve(root, relative);
-        if (file == null || !file.isFile()) {
-            return err("NOT_FOUND");
-        }
-        InputStream in = ctx.getContentResolver().openInputStream(file.getUri());
-        if (in == null) return err("NOT_FOUND");
-        byte[] buf = readAll(in);
-        in.close();
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        byte[] dig = md.digest(buf);
-        StringBuilder hex = new StringBuilder();
-        for (byte b : dig) hex.append(String.format("%02x", b));
-        String preview = new String(buf, 0, Math.min(buf.length, 400), "UTF-8");
-        JSONObject payload = new JSONObject();
-        payload.put("path", relative);
-        payload.put("byteLength", buf.length);
-        payload.put("contentHash", hex.toString());
-        payload.put("contentPreview", preview);
-        payload.put("contentIsData", true);
-        JSONObject ok = new JSONObject();
-        ok.put("ok", true);
-        ok.put("denied", false);
-        ok.put("payload", payload);
-        return ok;
-    }
-
-    private static DocumentFile resolve(DocumentFile root, String relative) {
-        if (relative == null || relative.isEmpty() || ".".equals(relative)) return root;
-        String[] parts = relative.replace('\\', '/').split("/");
+        if (p.isEmpty() || p.equals(".")) return root;
         DocumentFile cur = root;
-        for (String p : parts) {
-            if (p.isEmpty() || ".".equals(p)) continue;
-            if ("..".equals(p)) return null;
-            DocumentFile next = null;
-            DocumentFile[] kids = cur.listFiles();
-            if (kids == null) return null;
-            for (DocumentFile k : kids) {
-                if (p.equals(k.getName())) {
-                    next = k;
-                    break;
-                }
-            }
+        for (String part : p.split("/")) {
+            if (part.isEmpty() || part.equals(".")) continue;
+            if (part.equals("..")) throw new SecurityException("PATH_TRAVERSAL_DENIED");
+            DocumentFile next = cur.findFile(part);
             if (next == null) return null;
             cur = next;
         }
         return cur;
     }
 
-    private static byte[] readAll(InputStream in) throws Exception {
-        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
-        byte[] b = new byte[8192];
-        int n;
-        while ((n = in.read(b)) >= 0) bos.write(b, 0, n);
-        return bos.toByteArray();
+    public static JSONObject list(Context ctx, Uri tree, String relative) {
+        JSONObject o = new JSONObject();
+        try {
+            DocumentFile root = DocumentFile.fromTreeUri(ctx, tree);
+            if (root == null || !root.exists()) {
+                o.put("ok", false);
+                o.put("denied", true);
+                o.put("error", "WORKSPACE_ACCESS_REVOKED");
+                return o;
+            }
+            DocumentFile dir = resolve(root, relative);
+            if (dir == null || !dir.exists()) {
+                o.put("ok", false);
+                o.put("error", "NOT_FOUND");
+                return o;
+            }
+            JSONArray entries = new JSONArray();
+            DocumentFile[] files = dir.listFiles();
+            if (files != null) {
+                for (DocumentFile f : files) {
+                    JSONObject e = new JSONObject();
+                    e.put("name", f.getName());
+                    e.put("isDir", f.isDirectory());
+                    e.put("length", f.length());
+                    entries.put(e);
+                }
+            }
+            o.put("ok", true);
+            o.put("denied", false);
+            o.put("entries", entries);
+            o.put("count", entries.length());
+        } catch (SecurityException se) {
+            try {
+                o.put("ok", false);
+                o.put("denied", true);
+                o.put("error", se.getMessage());
+            } catch (Exception ignored) {}
+        } catch (Exception e) {
+            try {
+                o.put("ok", false);
+                o.put("error", e.getMessage() != null ? e.getMessage() : "IO_ERROR");
+            } catch (Exception ignored) {}
+        }
+        return o;
     }
 
-    private static JSONObject err(String code) throws Exception {
+    public static JSONObject read(Context ctx, Uri tree, String relative) {
         JSONObject o = new JSONObject();
-        o.put("ok", false);
-        o.put("denied", code.contains("DENIED") || code.contains("REVOKED") || code.contains("MISMATCH"));
-        o.put("error", code);
+        try {
+            DocumentFile root = DocumentFile.fromTreeUri(ctx, tree);
+            if (root == null || !root.exists()) {
+                o.put("ok", false);
+                o.put("denied", true);
+                o.put("error", "WORKSPACE_ACCESS_REVOKED");
+                return o;
+            }
+            DocumentFile doc = resolve(root, relative);
+            if (doc == null || !doc.exists() || doc.isDirectory()) {
+                o.put("ok", false);
+                o.put("denied", false);
+                o.put("error", "NOT_FOUND");
+                return o;
+            }
+            byte[] data;
+            try (InputStream in = ctx.getContentResolver().openInputStream(doc.getUri())) {
+                if (in == null) {
+                    o.put("ok", false);
+                    o.put("error", "IO_ERROR");
+                    return o;
+                }
+                data = readAll(in, 512 * 1024);
+            }
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] dig = md.digest(data);
+            StringBuilder hex = new StringBuilder();
+            for (byte b : dig) hex.append(String.format("%02x", b));
+            String preview = new String(data, 0, Math.min(data.length, 200), java.nio.charset.StandardCharsets.UTF_8);
+
+            JSONObject payload = new JSONObject();
+            payload.put("path", relative);
+            payload.put("byteLength", data.length);
+            payload.put("contentHash", hex.toString());
+            payload.put("contentPreview", preview);
+            payload.put("contentIsData", true);
+
+            o.put("ok", true);
+            o.put("denied", false);
+            o.put("payload", payload);
+        } catch (SecurityException se) {
+            try {
+                o.put("ok", false);
+                o.put("denied", true);
+                o.put("error", se.getMessage());
+            } catch (Exception ignored) {}
+        } catch (Exception e) {
+            try {
+                o.put("ok", false);
+                o.put("error", e.getMessage() != null ? e.getMessage() : "IO_ERROR");
+            } catch (Exception ignored) {}
+        }
         return o;
+    }
+
+    private static byte[] readAll(InputStream in, int max) throws Exception {
+        byte[] buf = new byte[8192];
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        int n, total = 0;
+        while ((n = in.read(buf)) >= 0) {
+            total += n;
+            if (total > max) break;
+            out.write(buf, 0, n);
+        }
+        return out.toByteArray();
     }
 }
