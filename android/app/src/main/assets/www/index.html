@@ -110,6 +110,14 @@ html, body {
 .toast.show { opacity: 1; }
 .lock { font-size: 11px; color: var(--mauve); margin-top: 6px; }
 </style>
+
+<style>/* GLASS 2026 */
+.card.glass{background:rgba(255,255,255,0.06);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.12);box-shadow:0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);border-radius:16px}
+.card.mutation.premium{border:1px solid rgba(139,92,246,0.4);box-shadow:0 0 40px rgba(139,92,246,0.15)}
+.btn.approve.premium{background:linear-gradient(135deg,#8B5CF6,#6366F1);box-shadow:0 4px 20px rgba(139,92,246,0.4)}
+.premium-hint{color:rgba(34,211,238,0.9);font-size:12px}
+.lock{color:rgba(251,191,36,0.9);font-size:11px;margin-top:8px}
+</style>
 </head>
 <body>
 <div class="app">
@@ -140,7 +148,7 @@ html, body {
         <div class="card-head"><span class="card-title">Evidence E-demo01</span><span class="tag verified">VERIFIED</span></div>
         <p>Read checkout/flow.ts (demo card until live probe).</p>
       </div>
-      <div class="card mutation" id="mutationCard">
+      <div class="card mutation" id="mutationCard" style="display:none">
         <div class="card-head"><span class="card-title">Proposed mutation</span><span class="tag conf">confidence 96%</span></div>
         <p>Add balance guard + tests</p>
         <div class="sub">2 files · <b style="color:var(--ok)">+38</b> <b style="color:var(--danger)">-4</b></div>
@@ -176,7 +184,8 @@ html, body {
     <section class="panel" id="panel-settings">
       <div class="card">
         <div class="card-head"><span class="card-title">Runner</span></div>
-        <div class="term" id="settingsId">…</div>
+        <p class="sub premium-hint" id="settingsHuman">Runner local · isolation limitée au dossier choisi · M1.5 CLOSED</p>
+<div class="term trace" id="settingsId">…</div>
       </div>
       <div class="card">
         <button class="btn approve" id="btnPick" style="width:100%">Choisir dossier (SAF)</button>
@@ -185,7 +194,7 @@ html, body {
       </div>
       <div class="card"><p class="sub">M1.5 CLOSED · T7 PLATFORM_LIMITED · T7-P · M2 shell</p></div>
     </section>
-    <div class="composer-wrap" id="composerWrap">
+    <div id="proposalHost" class="glass-host"></div><div class="composer-wrap" id="composerWrap">
       <div class="composer">
         <input id="ask" placeholder="Ask Axiom…" autocomplete="off"/>
         <button class="send" id="btnSend">↑</button>
@@ -217,14 +226,53 @@ document.getElementById('btnCodeRun').onclick=function(){
   if(!line)return;
   var r=safeCall('execCommand', JSON.stringify({ok:false,error:'NO_BRIDGE'}));
   if(bridge&&bridge.execCommand){try{r=bridge.execCommand(line)}catch(e){r=String(e)}}
-  try{var j=JSON.parse(r);document.getElementById('codeTerm').textContent='$ '+line+'\n'+JSON.stringify(j,null,2)}catch(e){document.getElementById('codeTerm').textContent='$ '+line+'\n'+r}
+  try{var j=JSON.parse(r);var pretty=j.human? (j.title?j.title+'\n':'')+(j.summary?j.summary+'\n':'')+(j.message||'')+'\nStatut: '+humanStatus(j.status) : JSON.stringify(j,null,2); document.getElementById('codeTerm').textContent='$ '+line+'\n'+pretty}catch(e){document.getElementById('codeTerm').textContent='$ '+line+'\n'+r}
   document.getElementById('codeInput').value='';
 };
 document.getElementById('codeInput').addEventListener('keydown',function(ev){if(ev.key==='Enter'){document.getElementById('btnCodeRun').click()}});
 
+
+function humanStatus(s){
+  return ({PROPOSED:'En attente',APPROVED:'Approuvé',REJECTED:'Refusé',EXPIRED:'Expiré',STALE:'Obsolète',EXECUTED:'Exécuté'}[s]||s||'');
+}
+function riskLabel(r){return ({low:'Risque faible',medium:'Risque moyen',high:'Risque élevé'}[r]||'');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function renderProposalCard(data){
+  if(!data||data.empty){
+    return '<div class=\"card glass\"><p class=\"sub\">Aucune modification en attente.</p></div>';
+  }
+  var files=(data.files&&data.files.length)?data.files.join(', '):'—';
+  var st=humanStatus(data.status);
+  var conf = data.confidence ? '<span class=\"tag conf\">Confiance '+esc(data.confidence)+'%</span>' : '';
+  return '<div class=\"card glass mutation premium\" id=\"liveProposal\">'+
+    '<div class=\"card-head\"><span class=\"card-title\">'+esc(data.title||'Modification proposée')+'</span>'+conf+'<span class=\"tag status\">'+esc(st)+'</span></div>'+
+    '<p class=\"summary\">'+esc(data.summary||'')+'</p>'+
+    '<div class=\"sub\">'+esc(files)+' · '+esc(data.workspace||'')+' · '+esc(riskLabel(data.risk))+'</div>'+
+    '<div class=\"lock\">🔒 Approbation requise · aucune écriture tant que vous n\'approuvez pas · PATH_ONLY</div>'+
+    '<div class=\"actions\">'+
+    '<button class=\"btn reject glass\" onclick=\"proposalAct(\'reject\')\">Refuser</button>'+
+    '<button class=\"btn approve premium\" onclick=\"proposalAct(\'approve\')\">Approuver</button>'+
+    '</div></div>';
+}
+function proposalAct(act){
+  var r='{}';
+  if(window.bridge&&bridge.execCommand){try{r=bridge.execCommand('proposal '+act)}catch(e){r='{\"error\":\"'+esc(String(e))+'\"}'}}
+  try{var j=JSON.parse(r);toast(j.message||humanStatus(j.status));refreshProposal()}catch(e){toast('Erreur: '+String(e))}
+}
+function refreshProposal(){
+  var raw='{\"empty\":true}';
+  if(window.bridge&&bridge.execCommand){try{raw=bridge.execCommand('proposal show')}catch(e){}}
+  try{
+    var j=JSON.parse(raw);
+    var host=document.getElementById('proposalHost');
+    if(host) host.innerHTML=renderProposalCard(j);
+  }catch(e){}
+}
+
 function refresh(){
   let id=safeCall('getNativeIdentity',null)||safeCall('nativeIdentity','{"runner_id":"runner-karl-phone","isolation_level":"PATH_ONLY"}');
-  document.getElementById('settingsId').textContent=id;
+  document.getElementById('settingsId').textContent=id; try{var _sh=document.getElementById('settingsHuman'); if(_sh) _sh.textContent='Runner prêt · isolation PATH_ONLY · T7 PLATFORM-LIMITED';}catch(_e){}
   try{const j=JSON.parse(id);const o=j.identity||j;document.getElementById('runnerChip').textContent=(o.runner_id||'runner-karl-phone')+' · '+(o.isolation_level||'PATH_ONLY')}catch(e){}
   const ws=safeCall('getActiveWorkspace','null');
   if(ws&&ws!=='null'){try{document.getElementById('wsChip').textContent='📁 '+JSON.parse(ws).displayName}catch(e){document.getElementById('wsChip').textContent='workspace'}}
@@ -235,7 +283,7 @@ document.getElementById('btnProbe').onclick=()=>{const r=safeCall('probeWorkspac
 document.getElementById('btnT7p').onclick=()=>{const r=safeCall('runT7P','{"t7p":"local"}');document.getElementById('t7pOut').textContent=r;toast('T7-P')};
 document.getElementById('btnApprove').onclick=()=>{toast('M2: Approve recorded — edit locked until worktree');document.getElementById('btnApprove').disabled=true};
 document.getElementById('btnReject').onclick=()=>{document.getElementById('mutationCard').style.opacity='0.5';toast('Rejected — canonical intact')};
-document.getElementById('btnSend').onclick=()=>{if(!document.getElementById('ask').value.trim())return;toast('Message captured');document.getElementById('ask').value=''};
+document.getElementById('btnSend').onclick=()=>{var v=document.getElementById('ask').value.trim();if(!v)return; if(/^propose\b/i.test(v)){ if(bridge&&bridge.execCommand){try{bridge.execCommand('propose '+v)}catch(e){}} refreshProposal(); toast('Proposition créée'); document.getElementById('ask').value=''; return;} toast('Message enregistré'); document.getElementById('ask').value=''};
 refresh();
 </script>
 </body>

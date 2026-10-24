@@ -157,7 +157,62 @@ public class MainActivity extends Activity {
                     }
                     return "{\"ok\":false,\"error\":\"USAGE\",\"hint\":\"worktree create <taskId>|worktree status\"}";
                 }
-                if ("help".equals(cmd)) {
+                
+                if ("propose".equals(cmd)) {
+                    JSONObject w = WorkspaceStore.getActive(MainActivity.this);
+                    JSONObject p = ProposalStore.createDemo(MainActivity.this, w);
+                    JSONObject out = new JSONObject();
+                    out.put("ok", true);
+                    out.put("human", true);
+                    out.put("title", p.optString("title"));
+                    out.put("summary", p.optString("summary"));
+                    out.put("status", p.optString("status"));
+                    out.put("files", p.optJSONArray("targets"));
+                    out.put("workspace", p.optString("workspaceLabel"));
+                    out.put("risk", p.optString("risk"));
+                    out.put("proposalId", p.optString("proposalId"));
+                    return out.toString();
+                }
+                if ("proposal".equals(cmd)) {
+                    String sub = parts.length > 1 ? parts[1].toLowerCase() : "show";
+                    if ("show".equals(sub)) {
+                        JSONObject pend = ProposalStore.getPending(MainActivity.this);
+                        if (pend == null) {
+                            return "{\"ok\":true,\"empty\":true,\"message\":\"Aucune modification en attente.\"}";
+                        }
+                        JSONObject out = new JSONObject();
+                        out.put("ok", true);
+                        out.put("human", true);
+                        out.put("title", pend.optString("title"));
+                        out.put("summary", pend.optString("summary"));
+                        out.put("status", pend.optString("status"));
+                        out.put("files", pend.optJSONArray("targets"));
+                        out.put("workspace", pend.optString("workspaceLabel"));
+                        out.put("risk", pend.optString("risk"));
+                        out.put("proposalId", pend.optString("proposalId"));
+                        return out.toString();
+                    }
+                    if ("approve".equals(sub) || "reject".equals(sub)) {
+                        JSONObject pend = ProposalStore.getPending(MainActivity.this);
+                        if (pend == null) {
+                            return "{\"ok\":false,\"message\":\"Rien à approuver.\"}";
+                        }
+                        String st = "approve".equals(sub) ? "APPROVED" : "REJECTED";
+                        JSONObject updated = ProposalStore.setStatus(
+                            MainActivity.this, pend.getString("proposalId"), st);
+                        JSONObject out = new JSONObject();
+                        out.put("ok", updated.optBoolean("ok", true));
+                        out.put("human", true);
+                        out.put("title", updated.optString("title"));
+                        out.put("status", st);
+                        out.put("message", "approve".equals(sub)
+                            ? "Approuvé. Aucune écriture fichier (porte seule)."
+                            : "Refusé. Canonical intact.");
+                        return out.toString();
+                    }
+                    return "{\"ok\":false,\"hint\":\"proposal show|approve|reject\"}";
+                }
+if ("help".equals(cmd)) {
                     return "{\"ok\":true,\"commands\":[\"worktree create <taskId>\",\"worktree status\",\"help\"]}";
                 }
                 return "{\"ok\":false,\"error\":\"UNKNOWN_COMMAND\",\"cmd\":\"" + cmd + "\"}";
