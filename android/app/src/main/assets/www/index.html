@@ -66,7 +66,7 @@ html, body {
 .tag.path { background: rgba(94,234,212,0.12); color: var(--cyan); }
 .tag.conf { background: rgba(167,139,250,0.18); color: var(--mauve); }
 .card p, .sub { font-size: 12px; color: var(--muted); margin: 4px 0; }
-.term {
+.term { white-space: pre-wrap; word-break: break-word; overflow-x: auto;
   background: #07090f; border: 1px solid var(--border); border-radius: 14px;
   padding: 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: #CBD5E1;
 }
@@ -210,7 +210,7 @@ function refresh(){
   else document.getElementById('wsChip').textContent='Aucun WS';
 }
 document.getElementById('btnPick').onclick=()=>{if(bridge&&bridge.pickWorkspace)bridge.pickWorkspace();else toast('No bridge')};
-document.getElementById('btnProbe').onclick=()=>{const r=safeCall('probeWorkspace','{"error":"NO_BRIDGE"}');document.getElementById('evList').textContent=r;toast('Probe done');refresh()};
+document.getElementById('btnProbe').onclick=()=>{const r=safeCall('probeWorkspace','{"error":"NO_BRIDGE"}');try{const j=JSON.parse(r);document.getElementById('evList').textContent=JSON.stringify(j,null,2)}catch(e){document.getElementById('evList').textContent=r}toast('Probe done');refresh()};
 document.getElementById('btnT7p').onclick=()=>{const r=safeCall('runT7P','{"t7p":"local"}');document.getElementById('t7pOut').textContent=r;toast('T7-P')};
 document.getElementById('btnApprove').onclick=()=>{toast('M2: Approve recorded — edit locked until worktree');document.getElementById('btnApprove').disabled=true};
 document.getElementById('btnReject').onclick=()=>{document.getElementById('mutationCard').style.opacity='0.5';toast('Rejected — canonical intact')};
