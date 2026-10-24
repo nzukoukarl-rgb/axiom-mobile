@@ -153,8 +153,18 @@ html, body {
     </section>
     <section class="panel" id="panel-code">
       <div class="card">
-        <div class="card-head"><span class="card-title">T7-P Policy</span><span class="tag path">M2</span></div>
-        <div class="term" id="t7pOut">open Settings → Run T7-P</div>
+        <div class="card-head"><span class="card-title">Code · terminal</span><span class="tag path">M2.0</span></div>
+        <p class="sub">Commands now; agent will call the same execCommand later.</p>
+        <div class="term" id="codeTerm">$ help
+(type a command below)</div>
+        <div class="composer" style="margin-top:10px;pointer-events:auto">
+          <input id="codeInput" placeholder="worktree create task-001" autocomplete="off"/>
+          <button class="send" id="btnCodeRun">↵</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">T7-P Policy</span></div>
+        <div class="term" id="t7pOut">Settings → Run T7-P</div>
       </div>
     </section>
     <section class="panel" id="panel-evidence">
@@ -201,6 +211,17 @@ function tab(n){
 }
 document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
 function safeCall(fn, fb){try{if(bridge&&bridge[fn])return bridge[fn]()}catch(e){return fb||('err:'+e)}return fb}
+
+document.getElementById('btnCodeRun').onclick=function(){
+  var line=document.getElementById('codeInput').value.trim();
+  if(!line)return;
+  var r=safeCall('execCommand', JSON.stringify({ok:false,error:'NO_BRIDGE'}));
+  if(bridge&&bridge.execCommand){try{r=bridge.execCommand(line)}catch(e){r=String(e)}}
+  try{var j=JSON.parse(r);document.getElementById('codeTerm').textContent='$ '+line+'\n'+JSON.stringify(j,null,2)}catch(e){document.getElementById('codeTerm').textContent='$ '+line+'\n'+r}
+  document.getElementById('codeInput').value='';
+};
+document.getElementById('codeInput').addEventListener('keydown',function(ev){if(ev.key==='Enter'){document.getElementById('btnCodeRun').click()}});
+
 function refresh(){
   let id=safeCall('getNativeIdentity',null)||safeCall('nativeIdentity','{"runner_id":"runner-karl-phone","isolation_level":"PATH_ONLY"}');
   document.getElementById('settingsId').textContent=id;

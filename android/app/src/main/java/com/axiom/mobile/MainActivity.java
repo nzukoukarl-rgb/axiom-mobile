@@ -118,6 +118,54 @@ public class MainActivity extends Activity {
             }
         }
 
+
+        @JavascriptInterface
+        public String execCommand(String line) {
+            try {
+                if (line == null) line = "";
+                line = line.trim();
+                if (line.isEmpty()) {
+                    return "{\"ok\":false,\"error\":\"EMPTY_COMMAND\"}";
+                }
+                String[] parts = line.split("\\s+");
+                String cmd = parts[0].toLowerCase();
+
+                // Future agent: same entrypoint for tool calls
+                if ("worktree".equals(cmd)) {
+                    String sub = parts.length > 1 ? parts[1].toLowerCase() : "status";
+                    JSONObject w = WorkspaceStore.getActive(MainActivity.this);
+                    if (w == null) {
+                        return "{\"ok\":false,\"error\":\"NO_WORKSPACE\"}";
+                    }
+                    if ("create".equals(sub)) {
+                        if (!WorkspaceStore.policyAllows(w, "repo.worktree.create")) {
+                            JSONObject deny = new JSONObject();
+                            deny.put("ok", false);
+                            deny.put("denied", true);
+                            deny.put("error", "PERMISSION_MISMATCH");
+                            deny.put("capability", "repo.worktree.create");
+                            deny.put("need", "WRITE");
+                            return deny.toString();
+                        }
+                        String taskId = parts.length > 2 ? parts[2] : ("task-" + System.currentTimeMillis());
+                        Uri tree = Uri.parse(w.getString("rootReference"));
+                        return WorktreeIo.create(MainActivity.this, tree, taskId).toString();
+                    }
+                    if ("status".equals(sub) || "list".equals(sub)) {
+                        Uri tree = Uri.parse(w.getString("rootReference"));
+                        return WorktreeIo.status(MainActivity.this, tree).toString();
+                    }
+                    return "{\"ok\":false,\"error\":\"USAGE\",\"hint\":\"worktree create <taskId>|worktree status\"}";
+                }
+                if ("help".equals(cmd)) {
+                    return "{\"ok\":true,\"commands\":[\"worktree create <taskId>\",\"worktree status\",\"help\"]}";
+                }
+                return "{\"ok\":false,\"error\":\"UNKNOWN_COMMAND\",\"cmd\":\"" + cmd + "\"}";
+            } catch (Exception e) {
+                return "{\"ok\":false,\"error\":\"" + String.valueOf(e.getMessage()).replace("\"", "'") + "\"}";
+            }
+        }
+
         @JavascriptInterface
         public String runT7P() {
             try {
