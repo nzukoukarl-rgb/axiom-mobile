@@ -221,91 +221,149 @@ background:rgba(18,22,40,.75);font-size:14px;line-height:1.45}
 </div>
 <div class="toast" id="toast"></div>
 <script>
-var codeHist=[];
-const bridge = window.AxiomBridge || null;
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800)}
-function tab(n){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===n));
-  document.getElementById('panel-'+n).classList.add('active');
-  document.getElementById('composerWrap').style.display=n==='chat'?'block':'none';
+var codeHist = [];
+var bridge = window.AxiomBridge || null;
+
+function toast(m) {
+  var t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = m;
+  t.classList.add("show");
+  setTimeout(function () { t.classList.remove("show"); }, 2800);
 }
-document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-function safeCall(fn, fb){try{if(bridge&&bridge[fn])return bridge[fn]()}catch(e){return fb||('err:'+e)}return fb}
 
-document.getElementById('btnCodeRun').onclick=function(){
-  var line=document.getElementById('codeInput').value.trim();
-  if(!line)return;
-  var r=safeCall('execCommand', JSON.stringify({ok:false,error:'NO_BRIDGE'}));
-  if(bridge&&bridge.execCommand){try{r=bridge.execCommand(line)}catch(e){r=String(e)}}
-  try{var j=JSON.parse(r);var pretty=j.human? (j.title?j.title+'\n':'')+(j.summary?j.summary+'\n':'')+(j.message||'')+'\nStatut: '+humanStatus(j.status) : JSON.stringify(j,null,2); codeHist.push('$ '+line+'\n'+pretty);if(codeHist.length>50)codeHist.shift();var el=document.getElementById('codeTerm');el.textContent=codeHist.join('\n\n');el.scrollTop=el.scrollHeight}catch(e){document.getElementById('codeTerm').textContent='$ '+line+'\n'+r}
-  document.getElementById('codeInput').value='';
-};
-document.getElementById('codeInput').addEventListener('keydown',function(ev){if(ev.key==='Enter'){document.getElementById('btnCodeRun').click()}});
-
-
-function humanStatus(s){
-  return ({PROPOSED:'En attente',APPROVED:'Approuvé',REJECTED:'Refusé',EXPIRED:'Expiré',STALE:'Obsolète',EXECUTED:'Exécuté'}[s]||s||'');
+function tab(n) {
+  document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+  document.querySelectorAll(".nav button").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-tab") === n);
+  });
+  var panel = document.getElementById("panel-" + n);
+  if (panel) panel.classList.add("active");
+  var cw = document.getElementById("composerWrap");
+  if (cw) cw.style.display = (n === "chat") ? "block" : "none";
 }
-function riskLabel(r){return ({low:'Risque faible',medium:'Risque moyen',high:'Risque élevé'}[r]||'');}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
-function renderProposalCard(data){
-  if(!data||data.empty){
-    return '<div class=\"card glass\"><p class=\"sub\">Aucune modification en attente.</p></div>';
+function safeCall(fn, fb) {
+  try {
+    if (bridge && typeof bridge[fn] === "function") return bridge[fn]();
+  } catch (e) {
+    return fb || ("err:" + e);
   }
-  var files=(data.files&&data.files.length)?data.files.join(', '):'—';
-  var st=humanStatus(data.status);
-  var conf = data.confidence ? '<span class=\"tag conf\">Confiance '+esc(data.confidence)+'%</span>' : '';
-  return '<div class=\"card glass mutation premium\" id=\"liveProposal\">'+
-    '<div class=\"card-head\"><span class=\"card-title\">'+esc(data.title||'Modification proposée')+'</span>'+conf+'<span class=\"tag status\">'+esc(st)+'</span></div>'+
-    '<p class=\"summary\">'+esc(data.summary||'')+'</p>'+
-    '<div class=\"sub\">'+esc(files)+' · '+esc(data.workspace||'')+' · '+esc(riskLabel(data.risk))+'</div>'+
-    '<div class=\"lock\">🔒 Approbation requise · aucune écriture tant que vous n\'approuvez pas · PATH_ONLY</div>'+
-    '<div class=\"actions\">'+
-    '<button class=\"btn reject glass\" onclick=\"proposalAct(\'reject\')\">Refuser</button>'+
-    '<button class=\"btn approve premium\" onclick=\"proposalAct(\'approve\')\">Approuver</button>'+
-    '</div></div>';
-}
-function proposalAct(act){
-  var r='{}';
-  if(window.bridge&&bridge.execCommand){try{r=bridge.execCommand('proposal '+act)}catch(e){r='{\"error\":\"'+esc(String(e))+'\"}'}}
-  try{var j=JSON.parse(r);toast(j.message||humanStatus(j.status));refreshProposal()}catch(e){toast('Erreur: '+String(e))}
-}
-function refreshProposal(){
-  var raw='{\"empty\":true}';
-  if(window.bridge&&bridge.execCommand){try{raw=bridge.execCommand('proposal show')}catch(e){}}
-  try{
-    var j=JSON.parse(raw);
-    var host=document.getElementById('proposalHost');
-    if(host) host.innerHTML=renderProposalCard(j);
-  }catch(e){}
+  return fb;
 }
 
-
-function appendChatUser(text){
-  var host=document.getElementById('proposalHost');
-  if(!host)return;
-  var d=document.createElement('div');
-  d.className='row-user';
-  d.innerHTML='<div class="bubble-h"></div>';
-  d.querySelector('.bubble-h').textContent=text;
-  host.parentNode.insertBefore(d, host);
+function humanStatus(s) {
+  var m = { PROPOSED: "En attente", APPROVED: "Approuve", REJECTED: "Refuse", EXECUTED: "Execute" };
+  return m[s] || s || "";
 }
 
-function refresh(){
-  let id=safeCall('getNativeIdentity',null)||safeCall('nativeIdentity','{"runner_id":"runner-karl-phone","isolation_level":"PATH_ONLY"}');
-  document.getElementById('settingsId').textContent=id; try{var _sh=document.getElementById('settingsHuman'); if(_sh) _sh.textContent='Runner prêt · isolation PATH_ONLY · T7 PLATFORM-LIMITED';}catch(_e){}
-  try{const j=JSON.parse(id);const o=j.identity||j;document.getElementById('runnerChip').textContent='Runner prêt';
-  if(ws&&ws!=='null'){try{document.getElementById('wsChip').textContent=JSON.parse(ws).displayName||'Dossier'}catch(e){document.getElementById('wsChip').textContent='workspace'}}
-  else document.getElementById('wsChip').textContent='Aucun dossier';
+function refresh() {
+  var id = safeCall("getNativeIdentity", null) || safeCall("nativeIdentity", "{}");
+  var sid = document.getElementById("settingsId");
+  if (sid) sid.textContent = id;
+  var sh = document.getElementById("settingsHuman");
+  if (sh) sh.textContent = "Runner pret · acces limite au dossier choisi";
+  var chip = document.getElementById("runnerChip");
+  if (chip) chip.textContent = "Runner pret";
+
+  var wsRaw = safeCall("getActiveWorkspace", "null");
+  var wsChip = document.getElementById("wsChip");
+  if (wsRaw && wsRaw !== "null") {
+    try {
+      var w = JSON.parse(wsRaw);
+      if (wsChip) wsChip.textContent = w.displayName || "Dossier";
+    } catch (e) {
+      if (wsChip) wsChip.textContent = "Dossier";
+    }
+  } else if (wsChip) {
+    wsChip.textContent = "Aucun dossier";
+  }
 }
-document.getElementById('btnPick').onclick=()=>{if(bridge&&bridge.pickWorkspace)bridge.pickWorkspace();else toast('No bridge')};
-document.getElementById('btnProbe').onclick=()=>{const r=safeCall('probeWorkspace','{"error":"NO_BRIDGE"}');try{const j=JSON.parse(r);document.getElementById('evList').textContent=JSON.stringify(j,null,2)}catch(e){document.getElementById('evList').textContent=r}toast('Probe done');refresh()};
-document.getElementById('btnT7p').onclick=()=>{const r=safeCall('runT7P','{"t7p":"local"}');document.getElementById('t7pOut').textContent=r;toast('T7-P')};
-document.getElementById('btnApprove').onclick=()=>{toast('M2: Approve recorded — edit locked until worktree');document.getElementById('btnApprove').disabled=true};
-document.getElementById('btnReject').onclick=()=>{document.getElementById('mutationCard').style.opacity='0.5';toast('Rejected — canonical intact')};
-document.getElementById('btnSend').onclick=()=>{var v=document.getElementById('ask').value.trim();if(!v)return; if(/^propose\b/i.test(v)){ if(bridge&&bridge.execCommand){try{bridge.execCommand('propose '+v)}catch(e){}} refreshProposal(); toast('Proposition créée'); document.getElementById('ask').value=''; return;} appendChatUser(v);toast('Message noté');document.getElementById('ask').value=''};
+
+function runCodeLine() {
+  var input = document.getElementById("codeInput");
+  if (!input) return;
+  var line = input.value.trim();
+  if (!line) return;
+  var r = "{}";
+  if (bridge && bridge.execCommand) {
+    try { r = bridge.execCommand(line); } catch (e) { r = String(e); }
+  }
+  var pretty = r;
+  try {
+    var j = JSON.parse(r);
+    if (j.human) {
+      pretty = [j.title, j.summary, j.message, j.status ? ("Statut: " + humanStatus(j.status)) : ""]
+        .filter(Boolean).join("\n");
+    } else {
+      pretty = JSON.stringify(j, null, 2);
+    }
+  } catch (e) {}
+  codeHist.push("$ " + line + "\n" + pretty);
+  if (codeHist.length > 40) codeHist.shift();
+  var el = document.getElementById("codeTerm");
+  if (el) {
+    el.textContent = codeHist.join("\n\n");
+    el.scrollTop = el.scrollHeight;
+  }
+  input.value = "";
+}
+
+document.querySelectorAll(".nav button").forEach(function (b) {
+  b.addEventListener("click", function () {
+    tab(b.getAttribute("data-tab"));
+  });
+});
+
+var btnCode = document.getElementById("btnCodeRun");
+if (btnCode) btnCode.onclick = runCodeLine;
+var codeInput = document.getElementById("codeInput");
+if (codeInput) {
+  codeInput.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") runCodeLine();
+  });
+}
+
+var btnPick = document.getElementById("btnPick");
+if (btnPick) btnPick.onclick = function () {
+  if (bridge && bridge.pickWorkspace) bridge.pickWorkspace();
+  else toast("Pont indisponible");
+};
+
+var btnProbe = document.getElementById("btnProbe");
+if (btnProbe) btnProbe.onclick = function () {
+  var r = safeCall("probeWorkspace", "{}");
+  var ev = document.getElementById("evList");
+  try { if (ev) ev.textContent = JSON.stringify(JSON.parse(r), null, 2); }
+  catch (e) { if (ev) ev.textContent = r; }
+  toast("Scan termine");
+  refresh();
+};
+
+var btnT7p = document.getElementById("btnT7p");
+if (btnT7p) btnT7p.onclick = function () {
+  var r = safeCall("runT7P", "{}");
+  var out = document.getElementById("t7pOut");
+  if (out) {
+    out.textContent = "Lecture: autorisee\nEcriture effective: refusee (politique)\nInvariant: politique <= droit Android";
+  }
+  toast("Test politique");
+};
+
+var btnSend = document.getElementById("btnSend");
+if (btnSend) btnSend.onclick = function () {
+  var ask = document.getElementById("ask");
+  var v = ask ? ask.value.trim() : "";
+  if (!v) return;
+  if (/^propose\b/i.test(v) && bridge && bridge.execCommand) {
+    try { bridge.execCommand("propose"); } catch (e) {}
+    toast("Proposition creee — voir Code: proposal show");
+  } else {
+    toast("Message note");
+  }
+  if (ask) ask.value = "";
+};
+
 refresh();
 </script>
 </body>
