@@ -158,7 +158,33 @@ public class MainActivity extends Activity {
                     return "{\"ok\":false,\"error\":\"USAGE\",\"hint\":\"worktree create <taskId>|worktree status\"}";
                 }
                 
-                if ("propose".equals(cmd)) {
+                
+                if ("task".equals(cmd)) {
+                    String sub = parts.length > 1 ? parts[1].toLowerCase() : "status";
+                    if ("start".equals(sub)) {
+                        StringBuilder g = new StringBuilder();
+                        for (int i = 2; i < parts.length; i++) {
+                            if (i > 2) g.append(' ');
+                            g.append(parts[i]);
+                        }
+                        return AgentRuntimeStore.startTask(MainActivity.this, g.toString()).toString();
+                    }
+                    if ("status".equals(sub)) {
+                        return AgentRuntimeStore.status(MainActivity.this).toString();
+                    }
+                    if ("checkpoint".equals(sub)) {
+                        String lab = parts.length > 2 ? parts[2] : "cp";
+                        return AgentRuntimeStore.checkpoint(MainActivity.this, lab).toString();
+                    }
+                    if ("resume".equals(sub)) {
+                        return AgentRuntimeStore.resume(MainActivity.this).toString();
+                    }
+                    if ("advance".equals(sub)) {
+                        return AgentRuntimeStore.advance(MainActivity.this).toString();
+                    }
+                    return "{\"ok\":false,\"hint\":\"task start|status|checkpoint|resume|advance\"}";
+                }
+if ("propose".equals(cmd)) {
                     JSONObject w = WorkspaceStore.getActive(MainActivity.this);
                     JSONObject p = ProposalStore.createDemo(MainActivity.this, w);
                     JSONObject out = new JSONObject();

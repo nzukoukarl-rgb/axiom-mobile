@@ -118,6 +118,17 @@ html, body {
 .premium-hint{color:rgba(34,211,238,0.9);font-size:12px}
 .lock{color:rgba(251,191,36,0.9);font-size:11px;margin-top:8px}
 </style>
+
+<style>/* CHAT_UX */
+#proposalHost .card.mutation{margin:12px 0}
+.row-agent,.row-user{display:flex;margin:10px 0;gap:8px}
+.row-user{justify-content:flex-end}
+.bubble-h{max-width:92%;padding:12px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.08);
+background:rgba(18,22,40,.75);font-size:14px;line-height:1.45}
+.row-user .bubble-h{background:linear-gradient(160deg,rgba(94,234,212,.12),rgba(124,58,237,.18));border-bottom-right-radius:6px}
+.chip{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -271,20 +282,30 @@ function refreshProposal(){
   }catch(e){}
 }
 
+
+function appendChatUser(text){
+  var host=document.getElementById('proposalHost');
+  if(!host)return;
+  var d=document.createElement('div');
+  d.className='row-user';
+  d.innerHTML='<div class="bubble-h"></div>';
+  d.querySelector('.bubble-h').textContent=text;
+  host.parentNode.insertBefore(d, host);
+}
+
 function refresh(){
   let id=safeCall('getNativeIdentity',null)||safeCall('nativeIdentity','{"runner_id":"runner-karl-phone","isolation_level":"PATH_ONLY"}');
   document.getElementById('settingsId').textContent=id; try{var _sh=document.getElementById('settingsHuman'); if(_sh) _sh.textContent='Runner prêt · isolation PATH_ONLY · T7 PLATFORM-LIMITED';}catch(_e){}
-  try{const j=JSON.parse(id);const o=j.identity||j;document.getElementById('runnerChip').textContent=(o.runner_id||'runner-karl-phone')+' · '+(o.isolation_level||'PATH_ONLY')}catch(e){}
-  const ws=safeCall('getActiveWorkspace','null');
-  if(ws&&ws!=='null'){try{document.getElementById('wsChip').textContent='📁 '+JSON.parse(ws).displayName}catch(e){document.getElementById('wsChip').textContent='workspace'}}
-  else document.getElementById('wsChip').textContent='Aucun WS';
+  try{const j=JSON.parse(id);const o=j.identity||j;document.getElementById('runnerChip').textContent='Runner prêt';
+  if(ws&&ws!=='null'){try{document.getElementById('wsChip').textContent=JSON.parse(ws).displayName||'Dossier'}catch(e){document.getElementById('wsChip').textContent='workspace'}}
+  else document.getElementById('wsChip').textContent='Aucun dossier';
 }
 document.getElementById('btnPick').onclick=()=>{if(bridge&&bridge.pickWorkspace)bridge.pickWorkspace();else toast('No bridge')};
 document.getElementById('btnProbe').onclick=()=>{const r=safeCall('probeWorkspace','{"error":"NO_BRIDGE"}');try{const j=JSON.parse(r);document.getElementById('evList').textContent=JSON.stringify(j,null,2)}catch(e){document.getElementById('evList').textContent=r}toast('Probe done');refresh()};
 document.getElementById('btnT7p').onclick=()=>{const r=safeCall('runT7P','{"t7p":"local"}');document.getElementById('t7pOut').textContent=r;toast('T7-P')};
 document.getElementById('btnApprove').onclick=()=>{toast('M2: Approve recorded — edit locked until worktree');document.getElementById('btnApprove').disabled=true};
 document.getElementById('btnReject').onclick=()=>{document.getElementById('mutationCard').style.opacity='0.5';toast('Rejected — canonical intact')};
-document.getElementById('btnSend').onclick=()=>{var v=document.getElementById('ask').value.trim();if(!v)return; if(/^propose\b/i.test(v)){ if(bridge&&bridge.execCommand){try{bridge.execCommand('propose '+v)}catch(e){}} refreshProposal(); toast('Proposition créée'); document.getElementById('ask').value=''; return;} toast('Message enregistré'); document.getElementById('ask').value=''};
+document.getElementById('btnSend').onclick=()=>{var v=document.getElementById('ask').value.trim();if(!v)return; if(/^propose\b/i.test(v)){ if(bridge&&bridge.execCommand){try{bridge.execCommand('propose '+v)}catch(e){}} refreshProposal(); toast('Proposition créée'); document.getElementById('ask').value=''; return;} appendChatUser(v);toast('Message noté');document.getElementById('ask').value=''};
 refresh();
 </script>
 </body>
