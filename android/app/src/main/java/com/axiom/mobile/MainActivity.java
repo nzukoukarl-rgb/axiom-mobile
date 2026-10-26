@@ -159,7 +159,22 @@ public class MainActivity extends Activity {
                 }
                 
                 
-                if ("task".equals(cmd)) {
+                
+                if ("edit".equals(cmd)) {
+                    String sub = parts.length > 1 ? parts[1].toLowerCase() : "status";
+                    if ("apply".equals(sub)) {
+                        return WorktreeEdit.apply(MainActivity.this).toString();
+                    }
+                    if ("status".equals(sub)) {
+                        return WorktreeEdit.status(MainActivity.this).toString();
+                    }
+                    return "{\"ok\":false,\"hint\":\"edit status|apply\"}";
+                }
+                if ("diff".equals(cmd)) {
+                    String sub = parts.length > 1 ? parts[1].toLowerCase() : "show";
+                    return WorktreeEdit.diff(MainActivity.this).toString();
+                }
+if ("task".equals(cmd)) {
                     String sub = parts.length > 1 ? parts[1].toLowerCase() : "status";
                     if ("start".equals(sub)) {
                         StringBuilder g = new StringBuilder();
