@@ -28,7 +28,7 @@ public final class WorktreeEdit {
         if (!gate.optBoolean("ok", false)) return gate;
 
         JSONObject ws = WorkspaceStore.getActive(ctx);
-        Uri tree = Uri.parse(ws.getString("treeUri"));
+        Uri tree = Uri.parse(ws.getString("rootReference"));
         DocumentFile root = DocumentFile.fromTreeUri(ctx, tree);
         if (root == null || !root.exists()) {
             return err("WORKSPACE_ACCESS", "Dossier inaccessible");
@@ -91,7 +91,7 @@ public final class WorktreeEdit {
         JSONObject ws = WorkspaceStore.getActive(ctx);
         if (ws == null) return err("NO_WORKSPACE", "Choisis un dossier");
 
-        Uri tree = Uri.parse(ws.getString("treeUri"));
+        Uri tree = Uri.parse(ws.getString("rootReference"));
         DocumentFile root = DocumentFile.fromTreeUri(ctx, tree);
         if (root == null) return err("WORKSPACE_ACCESS", "Dossier inaccessible");
 
@@ -160,9 +160,9 @@ public final class WorktreeEdit {
         JSONObject ws = WorkspaceStore.getActive(ctx);
         if (ws == null) return err("NO_WORKSPACE", "Choisis un dossier dans Réglages");
 
-        if (!WorkspaceStore.policyAllows(ws, "repo.edit", "WRITE")) {
+        if (!WorkspaceStore.policyAllows(ws, "repo.edit")) {
             // fallback: worktree create policy
-            if (!WorkspaceStore.policyAllows(ws, "repo.worktree.create", "WRITE")) {
+            if (!WorkspaceStore.policyAllows(ws, "repo.worktree.create")) {
                 return err("POLICY_DENY", "Écriture non autorisée par la politique");
             }
         }
