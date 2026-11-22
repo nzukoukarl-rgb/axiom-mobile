@@ -8,12 +8,9 @@ import androidx.documentfile.provider.DocumentFile;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/**
- * M2.0 — worktree dirs under workspace root via SAF.
- * Canonical files are never modified here.
- */
+/** M2.3 — AxiomWorktrees visible (no leading dot). Canonical never modified. */
 public final class WorktreeIo {
-    public static final String WT_ROOT = ".axiom-worktrees";
+    public static final String WT_ROOT = "AxiomWorktrees";
 
     private WorktreeIo() {}
 
@@ -25,22 +22,29 @@ public final class WorktreeIo {
         return root;
     }
 
-    private static DocumentFile ensureDir(DocumentFile parent, String name) throws Exception {
-        DocumentFile existing = parent.findFile(name);
-        if (existing != null && existing.isDirectory()) {
-            return existing;
+    private static DocumentFile childDir(DocumentFile parent, String name) {
+        if (parent == null) return null;
+        DocumentFile[] kids = parent.listFiles();
+        if (kids != null) {
+            for (DocumentFile k : kids) {
+                if (k != null && k.isDirectory() && name.equals(k.getName())) return k;
+            }
         }
-        if (existing != null && !existing.isDirectory()) {
-            throw new Exception("NOT_A_DIRECTORY:" + name);
-        }
-        DocumentFile created = parent.createDirectory(name);
-        if (created == null) {
-            throw new Exception("CREATE_DIR_FAILED:" + name);
-        }
-        return created;
+        DocumentFile f = parent.findFile(name);
+        if (f != null && f.isDirectory()) return f;
+        return null;
     }
 
-    /** Create .axiom-worktrees/<taskId>/ — does not touch other files. */
+    private static DocumentFile ensureDir(DocumentFile parent, String name) throws Exception {
+        DocumentFile existing = childDir(parent, name);
+        if (existing != null) return existing;
+        DocumentFile created = parent.createDirectory(name);
+        if (created == null) throw new Exception("CREATE_DIR_FAILED:" + name);
+        DocumentFile listed = childDir(parent, name);
+        if (listed == null) throw new Exception("CREATE_DIR_NOT_VISIBLE:" + name);
+        return listed;
+    }
+
     public static JSONObject create(Context ctx, Uri tree, String taskId) {
         JSONObject o = new JSONObject();
         try {
@@ -49,33 +53,39 @@ public final class WorktreeIo {
             if (taskId.isEmpty() || taskId.contains("/") || taskId.contains("..")
                     || taskId.contains("\\") || taskId.startsWith(".")) {
                 o.put("ok", false);
+                o.put("human", true);
                 o.put("error", "INVALID_TASK_ID");
+                o.put("message", "taskId invalide");
                 return o;
             }
             DocumentFile root = requireRoot(ctx, tree);
             DocumentFile wtRoot = ensureDir(root, WT_ROOT);
             DocumentFile taskDir = ensureDir(wtRoot, taskId);
-
             o.put("ok", true);
+            o.put("human", true);
             o.put("denied", false);
             o.put("capability", "repo.worktree.create");
             o.put("taskId", taskId);
             o.put("relativePath", WT_ROOT + "/" + taskId);
             o.put("canonicalIntact", true);
-            o.put("note", "Worktree dir created; no file edits applied");
+            o.put("title", "Worktree pret");
+            o.put("message", "Dossier visible: " + WT_ROOT + "/" + taskId
+                    + " — ouvre OtherWS dans Fichiers Android");
+            o.put("status", "DIR_EXISTS");
             JSONArray paths = new JSONArray();
             paths.put(WT_ROOT + "/" + taskId + "/");
             o.put("paths", paths);
         } catch (SecurityException se) {
             try {
-                o.put("ok", false);
-                o.put("denied", true);
+                o.put("ok", false); o.put("human", true); o.put("denied", true);
                 o.put("error", se.getMessage());
+                o.put("message", "Acces workspace revoque ou refuse");
             } catch (Exception ignored) {}
         } catch (Exception e) {
             try {
-                o.put("ok", false);
+                o.put("ok", false); o.put("human", true);
                 o.put("error", e.getMessage() != null ? e.getMessage() : "IO_ERROR");
+                o.put("message", "Echec create: " + e.getMessage());
             } catch (Exception ignored) {}
         }
         return o;
@@ -85,13 +95,13 @@ public final class WorktreeIo {
         JSONObject o = new JSONObject();
         try {
             DocumentFile root = requireRoot(ctx, tree);
-            DocumentFile wtRoot = root.findFile(WT_ROOT);
+            DocumentFile wtRoot = childDir(root, WT_ROOT);
             JSONArray list = new JSONArray();
             if (wtRoot != null && wtRoot.isDirectory()) {
                 DocumentFile[] kids = wtRoot.listFiles();
                 if (kids != null) {
                     for (DocumentFile k : kids) {
-                        if (k.isDirectory()) {
+                        if (k != null && k.isDirectory()) {
                             JSONObject e = new JSONObject();
                             e.put("taskId", k.getName());
                             e.put("relativePath", WT_ROOT + "/" + k.getName());
@@ -101,19 +111,20 @@ public final class WorktreeIo {
                 }
             }
             o.put("ok", true);
+            o.put("human", true);
             o.put("canonicalIntact", true);
             o.put("worktreeRoot", WT_ROOT);
             o.put("worktrees", list);
             o.put("count", list.length());
+            o.put("message", "Root: " + WT_ROOT + " · count=" + list.length());
         } catch (SecurityException se) {
             try {
-                o.put("ok", false);
-                o.put("denied", true);
+                o.put("ok", false); o.put("human", true); o.put("denied", true);
                 o.put("error", se.getMessage());
             } catch (Exception ignored) {}
         } catch (Exception e) {
             try {
-                o.put("ok", false);
+                o.put("ok", false); o.put("human", true);
                 o.put("error", e.getMessage() != null ? e.getMessage() : "IO_ERROR");
             } catch (Exception ignored) {}
         }
